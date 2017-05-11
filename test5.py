@@ -1,27 +1,28 @@
 ##################################################################
-# BEGIN Class Account
-class Account:
-	'Account class'
+# BEGIN Class Transaction
+class Transaction:
+	'Transaction class'
 	##############################################################
 	def __init__(self, database):
 		# CONNECT TO DATABASE
 		self.conn = sqlite3.connect(database)
 	##############################################################
 	def create_table(self):
-		# CREATE ACOOUNT TABLE
-		self.conn.execute('''CREATE TABLE AACOUNT(
-			ACCOUNT_ID		INTEGER,
-			FOREIGN KEY(ACCOUNT_ID)	REFERENCES CUSTOMER(CUSTOMER_ID),
-			ACCOUNT_TYPE 	INTEGER,
-			BALANCE			REAL,
-			WITHDRAWALS		INTEGER,
-			CLOSED_TIME		TEXT
+		# CREATE TRANSACTION TABLE
+		self.conn.execute('''CREATE TABLE TRANSACTION(
+			TRANSACTION_ID		INTEGER 	PRIMARY KEY		AUTOINCREMENT,
+			ACCOUNT_ID			INTEGER,
+			TRANSACTION_TYPE 		TEXT,
+			TRANSACTION_AMOUNT	REAL,
+			REMAINING_BALANCE	REAL,
+			TRANSACTION_TIME	TEXT
+			FOREIGN KEY(ACCOUNT_ID)	REFERENCES ACCOUNT(ACCOUNT_ID),
 			);''')
-		print "Account Table created successfully";
+		print "Transaction Table created successfully";
 	##############################################################
-	def insert_account(self, account_id, account_type, balance):
+	def insert_account(self, account_id, transaction_type, transaction_amount, remaining_balance):
 		# INSERT ROW
-		self.conn.execute("INSERT INTO CUSTOMER (ACCOUNT_ID, ACCOUNT_TYPE, BALANCE, WITHDRAWALS, CLOSED_TIME) VALUES (:1, :2, :3, 0, NULL)", (account_id, account_type, balance));
+		self.conn.execute("INSERT INTO TRANSACTION (TRANSACTION_ID, ACCOUNT_ID, TRANSACTION_TYPE, TRANSACTION_AMOUNT, REMAINING_BALANCE, TRANSACTION_TIME) VALUES (NULL, :1, :2, :3, :4, CURRENT_TIMESTAMP)", (account_id, transaction_type, transaction_amount, remaining_balance));
 		self.conn.commit()
 	##############################################################
 	def select_all(self):
@@ -34,6 +35,16 @@ class Account:
 		   print "WITHDRAWALS = ", row[3]
 		   print "CLOSED_TIME = ", row[4], "\n"
 	##############################################################
+	def get_balance(self, account_id):
+		cursor = self.conn.execute("SELECT * from ACCOUNT where ACCOUNT_ID = :1", (str(account_id),))
+		for row in cursor:
+			return row[2]
+	##############################################################
+	def get_withdrawals(self, account_id):
+		cursor = self.conn.execute("SELECT * from ACCOUNT where ACCOUNT_ID = :1", (str(account_id),))
+		for row in cursor:
+			return row[3]
+	##############################################################
 	def delete_all(self, database):
 		# DELETE ROWS
 		cursor = self.conn.execute("SELECT *  from ACCOUNT")
@@ -45,6 +56,11 @@ class Account:
 		self.conn.execute("UPDATE ACCOUNT set BALANCE = :1 where ACCOUNT_ID = :2", (balance, account_id))
 		self.conn.commit
 	##############################################################
+	def update_withdrawals(self, account_id, withdrawals):
+		# UPDATE PASSWORD
+		self.conn.execute("UPDATE ACCOUNT set WITHDRAWALS = :1 where ACCOUNT_ID = :2", (withdrawals, account_id))
+		self.conn.commit
+	##############################################################
 	def delete_account(self, database, account_id):
 		# DELETE ROWS
 		conn = sqlite3.connect(database)
@@ -54,5 +70,5 @@ class Account:
 	def close(self):
 		# CLOSE CONNECTION
 		self.conn.close()
-# END Class Account
+# END Class Transaction
 ##################################################################

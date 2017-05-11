@@ -4,6 +4,81 @@ import sqlite3
 ##################################################################
 
 ##################################################################
+# BEGIN Class Account
+class Account:
+	'Account class'
+	##############################################################
+	def __init__(self, database):
+		# CONNECT TO DATABASE
+		self.conn = sqlite3.connect(database)
+	##############################################################
+	def create_table(self):
+		# CREATE ACOOUNT TABLE
+		self.conn.execute('''CREATE TABLE ACCOUNT(
+			ACCOUNT_ID		INTEGER,
+			ACCOUNT_TYPE 	TEXT,
+			BALANCE			REAL,
+			WITHDRAWALS		INTEGER,
+			LAST_WITHDRAWAL_TIME	TEXT,
+			CLOSED_TIME		TEXT,
+			FOREIGN KEY(ACCOUNT_ID)	REFERENCES CUSTOMER(CUSTOMER_ID)
+			);''')
+	##############################################################
+	def insert_account(self, account_id, account_type, balance):
+		# INSERT ROW
+		self.conn.execute("INSERT INTO ACCOUNT (ACCOUNT_ID, ACCOUNT_TYPE, BALANCE, WITHDRAWALS, LAST_WITHDRAWAL_TIME, CLOSED_TIME) VALUES (:1, :2, :3, 0, NULL, NULL)", (account_id, account_type, balance));
+		self.conn.commit()
+	##############################################################
+	def select_all(self):
+		# SELECT ROWS
+		cursor = self.conn.execute("SELECT *  from ACCOUNT")
+		for row in cursor:
+		   print "ACCOUNT_ID = ", row[0]
+		   print "ACCOUNT_TYPE = ", row[1]
+		   print "BALANCE = ", row[2]
+		   print "WITHDRAWALS = ", row[3]
+		   print "LAST_WITHDRAWAL_TIME = ", row[4]
+		   print "CLOSED_TIME = ", row[5], "\n"
+	##############################################################
+	def get_balance(self, account_id):
+		cursor = self.conn.execute("SELECT * from ACCOUNT where ACCOUNT_ID = :1", (str(account_id),))
+		for row in cursor:
+			return row[2]
+	##############################################################
+	def get_withdrawals(self, account_id):
+		cursor = self.conn.execute("SELECT * from ACCOUNT where ACCOUNT_ID = :1", (str(account_id),))
+		for row in cursor:
+			return row[3]
+	##############################################################
+	def delete_all(self, database):
+		# DELETE ROWS
+		cursor = self.conn.execute("SELECT *  from ACCOUNT")
+		for row in cursor:
+		   self.delete_customer(database, row[0])
+	##############################################################
+	def update_balance(self, account_id, balance):
+		# UPDATE PASSWORD
+		self.conn.execute("UPDATE ACCOUNT set BALANCE = :1 where ACCOUNT_ID = :2", (balance, account_id))
+		self.conn.commit
+	##############################################################
+	def update_withdrawals(self, account_id, withdrawals):
+		# UPDATE PASSWORD
+		self.conn.execute("UPDATE ACCOUNT set WITHDRAWALS = :1, LAST_WITHDRAWAL_TIME = CURRENT_TIMESTAMP where ACCOUNT_ID = :2", (withdrawals, account_id))
+		self.conn.commit
+	##############################################################
+	def delete_account(self, database, account_id):
+		# DELETE ROWS
+		conn = sqlite3.connect(database)
+		self.conn.execute("DELETE from ACCOUNT where ACCOUNT_ID = :1;", (str(account_id),))
+		self.conn.commit()
+	##############################################################
+	def close(self):
+		# CLOSE CONNECTION
+		self.conn.close()
+# END Class Account
+##################################################################
+
+##################################################################
 # BEGIN Class Customer
 class Customer:
 	'Customer class'
@@ -27,7 +102,6 @@ class Customer:
 			STATE			CHAR(20),
 			PINCODE			INTEGER(6)
 			);''')
-		print "Customer Table created successfully", "\n";
 	##############################################################
 	def insert_customer(self, first_name, last_name, password, address1, address2, address3, city, state, pincode):
 		# INSERT ROW
@@ -80,7 +154,7 @@ class Customer:
 		for row in cursor:
 		   return row[0]
 	##############################################################
-	def signup(self):
+	def signup(self, database):
 		first_name = raw_input("Input first name: ")
 		last_name = raw_input("Input last name: ")
 		address1 = raw_input("Input address line 1: ")
@@ -95,8 +169,15 @@ class Customer:
 		print password
 		self.update_password(customer_id, str(password))
 		self.conn.commit()
+		balance = float(input("Input balance: "))
+		account_type = 's'
+		if balance > 5000:
+			account_type = raw_input("Input account type(s for savings, c for current): ")
+		account = Account(database)
+		account.insert_account(customer_id, account_type, balance)
+		account.close()
 	##############################################################
-	def signin(self):
+	def signin(self, database):
 		logged_in = False
 		if not logged_in:
 			customer_id = raw_input("\nInput Customer ID: ")
@@ -111,6 +192,7 @@ class Customer:
 			print "\n1. Address Change \n2. Money Deposit \n3. Money Withdrawal \n4. Print Statement \n5. Transfer Money \n6. Account Closure \n7. Customer Logout\n"
 			choice = int(input("Input choice: "))
 			if choice == 7:
+				# CUSTOMER LOGOUT
 				logged_in = False
 				break
 			if choice == 1:
@@ -124,20 +206,52 @@ class Customer:
 				self.conn.execute("UPDATE CUSTOMER set ADDRESS1 = :1, ADDRESS2 = :2, ADDRESS3 = :3, CITY = :4, STATE = :5, PINCODE = :6 where CUSTOMER_ID = :7", (address1, address2, address3, city, state, pincode, customer_id))
 				self.conn.commit()
 			elif choice == 2:
-				print "x2x"
+				# MONEY DEPOSIT
+				money = float(input("Input amount to deposit: "))
+				if(money > 0):
+					account = Account(database)
+					balance = float(account.get_balance(customer_id))
+					account.update_balance(customer_id, balance + money)
+					account.conn.commit()
+					account.close
 			elif choice == 3:
-				print "x3x"
+				# MONEY WITHDRAWAL
+				account = Account(database)
+				withdrawals = account.get_withdrawals(customer_id)
+				if withdrawals < 10:
+					money = float(input("Input amount to withdraw: "))
+					balance = float(account.get_balance(customer_id))
+					if money <= balance:
+						account.update_balance(customer_id, balance - money)
+						account.update_withdrawals(customer_id, withdrawals + 1)
+					else:
+						print "You cannot withdraw more money than you own!\n"
+				else:
+					print "You have already withdrawn money 10 times for this month\n"
+				account.conn.commit()
+				account.close
 			elif choice == 4:
+				# PRINT STATEMENT
 				print "x4x"
 			elif choice == 5:
+				# TRANSFER MONEY
 				print "x5x"
 			elif choice == 6:
+				# TRANSFER MONEY
 				print "x6x"
+			elif choice == 8:
+				customer = Customer(database)
+				customer.select_all()
+				customer.close
 			else:
-				driver_function('test.db');
+				account = Account(database)
+				account.select_all()
+				account.close
 # END Class Customer
 ##################################################################
 
+##################################################################
+# BEGIN MAIN MENU
 def main_menu(database):
 	while True:
 		print "1. Sign Up(New Customer) \n2. Sign In(Existing Customer) \n3. Admin Sign In \n4. Quit\n"
@@ -146,37 +260,32 @@ def main_menu(database):
 			break
 		if choice == 1:
 			customer = Customer(database)
-			customer.signup()
+			customer.signup(database)
 			customer.close()
 		elif choice == 2:
 			customer = Customer(database)
-			customer.signin()
+			customer.signin(database)
 			customer.close
 		elif choice == 3:
 			print "3"
 		else:
-			driver_function('test.db');
-		# else:
-		# 	print "Invalid choice"
+			print "Invalid choice"
+# END MAIN MENU
+##################################################################
 
 ##################################################################
-# BEGIN Driver Function
-def driver_function(database):
+# BEGIN Driver Program
+database = 'test.db'
+try:
 	customer = Customer(database)
-	#customer.insert_customer('RAJAT', 'PUNDIR', 'MYPASS', 'C-28', 'BRIJESH NAGAR', 'PAPER MILL ROAD', 'SAHARANPUR', 'U.P.', 247001)
-	# print customer.find_by_values('RAJAT', 'PUNDIR', 'MYPASS', 'C-28', 'BRIJESH NAGAR', 'PAPER MILL ROAD', 'SAHARANPUR', 'U.P.', 247001)
-	#customer.delete_customer(database, 32)
-	#customer.delete_all(database)
-	#customer.update_password(30, 'RAJAT')
-	#customer.create_table()
-	customer.select_all()
-	#customer.get_password('30')
-	customer.close
-# END Driver Function
+	customer.create_table()
+	customer.close()
+	account = Account(database)
+	account.create_table()
+	account.select_all()
+	account.close
+except:
+	pass
+main_menu(database);
+# END Driver Program
 ##################################################################
-
-
-if 0:
-	driver_function('test.db');
-else:
-	main_menu('test.db');

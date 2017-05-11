@@ -157,7 +157,8 @@ class Customer:
 			CITY			CHAR(20),
 			STATE			CHAR(20),
 			PINCODE			INTEGER(6),
-			CLOSURE 		INTEGER(1)
+			CLOSURE 		INTEGER(1),
+			CLOSURE_DATE	TEXT
 			);''')
 		print "Customer Table created successfully";
 	##############################################################
@@ -193,7 +194,8 @@ class Customer:
 		   print "ADDRESS3 = ", row[6]
 		   print "CITY = ", row[7]
 		   print "STATE = ", row[8]
-		   print "PINCODE = ", row[9], "\n"
+		   print "PINCODE = ", row[9]
+		   print "CLOSURE DATE = ", row[11], "\n"
 	##############################################################
 	def valid_customer(self, customer_id):
 		# VALIDATE CUSTOMER ID
@@ -215,7 +217,7 @@ class Customer:
 	##############################################################
 	def update_closure_time(self, customer_id):
 		# UPDATE PASSWORD
-		self.conn.execute("UPDATE CUSTOMER set CLOSURE = 1 where CUSTOMER_ID = :1", (customer_id,))
+		self.conn.execute("UPDATE CUSTOMER set CLOSURE = 1, CLOSURE_DATE = CURRENT_TIMESTAMP where CUSTOMER_ID = :1", (customer_id,))
 		self.conn.commit
 	##############################################################
 	def get_password(self, customer_id):
